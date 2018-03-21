@@ -11,15 +11,16 @@
 float PI = 3.14f;
 static bool _smooth = true;
 static GsModel * torus;
-static int numFaces = 10;
+static int numFaces = 12;
 static float r = 0.1f;
 static float R = 0.5f;
+
 GsVec torusFunction(int phi, int theta, const float r1, const float R1) {
 	float x = 0.0f;
 	float y = 0.0f;
 	float z = 0.0f;
-	float alpha = GS_TORAD(float(phi));
-	float beta = GS_TORAD(float(theta));
+	float alpha = GS_TORAD(float(theta));
+	float beta = GS_TORAD(float(phi));
 
 	x = float(R1 + r1 * cosf(alpha))*cosf(beta);
 	y = float(R1 + r1 * cosf(alpha)) * sinf(beta);
@@ -27,13 +28,13 @@ GsVec torusFunction(int phi, int theta, const float r1, const float R1) {
 
 	return GsVec(x, y, z);
 }
-GsVec smoothCalculation(int phi, int theta) {
+GsVec smoothCalculation(int phi, int theta, const float r1, const float R1) {
 
 	float x = 0.0f;
 	float y = 0.0f;
 	float z = 0.0f;
-	float alpha = GS_TORAD(float(phi));
-	float beta = GS_TORAD(float(theta));
+	float alpha = GS_TORAD(float(theta));
+	float beta = GS_TORAD(float(phi));
 
 	x = cosf(alpha) * cosf(beta);
 	y = cosf(alpha) * sinf(beta);
@@ -108,8 +109,7 @@ void MyViewer::build_scene()
 	float x = 0.0f;
 	float y = 0.0f;
 	float z = 0.0f;
-
-
+	
 
 	int a = 0;
 	int b = 1;
@@ -130,93 +130,48 @@ void MyViewer::build_scene()
 			//3, 4, 5 index 
 			GsModel::Face f2 = GsModel::Face(a + 3, b + 3, c + 3);
 
-			/*float u00 = (PI + atan2f(A00.y, A00.x)) / (2.0f * PI);
-			float v00 = (1.0f + A00.z) / 2.0f;
-
-			float u10 = (PI + atan2f(A10.y, A10.x)) / (2.0f * PI);
-			float v10 = (1.0f + A10.z) / 2.0f;
 			
-			float u01 = (PI + atan2f(A01.y, A01.x)) / (2.0f * PI);
-			float v01 = (1.0f + A01.z) / 2.0f;
-
-			float u11 = (PI + atan2f(A11.y, A11.x)) / (2.0f * PI);
-			float v11 = (1.0f + A11.z) / 2.0f;*/
-
-			float v1 = GS_TORAD(float(prevPhi)) / (2.0f * PI); 
-			float u1 = GS_TORAD(float(prevTheta)) / (2.0f * PI);
-			float v2 = GS_TORAD(float(nextPhi))/ (2.0f * PI);
-			float u2 = GS_TORAD(float(nextTheta)) / (2.0f * PI);
 
 			//Push the points that make one triangle
 			m.V.push() = A00;
 			m.V.push() = A10;
 			m.V.push() = A01;
-			
-			/*m.T.push() = GsPnt2(u00, v00);
-			m.T.push() = GsPnt2(u10, v10);
-			m.T.push() = GsPnt2(u01, v01);*/
-			m.T.push() = GsPnt2(u1, v1);
-			m.T.push() = GsPnt2(u2, v1);
-			m.T.push() = GsPnt2(u1, v2);
-			
+
 			//Push the points that make the other triangle
 			m.V.push() = A10;
 			m.V.push() = A11;
 			m.V.push() = A01;
 
-
-			m.T.push() = GsPnt2(u1, v2);
-			m.T.push() = GsPnt2(u2, v2);
-			m.T.push() = GsPnt2(u2, v1);
-			//m.T.push() = GsPnt2(u10, v10);
-			//m.T.push() = GsPnt2(u11, v11);
-			//m.T.push() = GsPnt2(u01, v01);
-
 			//Push the faces of the triangles
 			m.F.push() = f1;
 			m.F.push() = f2;
 
+
+
 			
+
+			//Calculating normals
+			A00 = smoothCalculation(prevPhi, prevTheta, r, R);
+			A10 = smoothCalculation(nextPhi, prevTheta, r, R);
+			A01 = smoothCalculation(prevPhi, nextTheta, r ,R);
+			A11 = smoothCalculation(nextPhi, nextTheta, r, R);
+
+			//Pushing the normals as the triangles
+			m.N.push() = A00;
+			m.N.push() = A10;
+			m.N.push() = A01;
+
+			m.N.push() = A10;
+			m.N.push() = A11;
+			m.N.push() = A01;
+
 			
-			if (_smooth) {
-
-				//Calculating normals
-				A00 = smoothCalculation(prevPhi, prevTheta);
-				A10 = smoothCalculation(nextPhi, prevTheta);
-				A01 = smoothCalculation(prevPhi, nextTheta);
-				A11 = smoothCalculation(nextPhi, nextTheta);
-
-				//Pushing the normals as the triangles
-				m.N.push() = A00;
-				m.N.push() = A10;
-				m.N.push() = A01;
-
-				m.N.push() = A10;
-				m.N.push() = A11;
-				m.N.push() = A01;
-
-				//torus->set_mode(GsModel::Smooth, GsModel::NoMtl);
-			}
-			else {
-				//Calculating vector u and v. Calculations are provided at https://www.khronos.org/opengl/wiki/Calculating_a_Surface_Normal
-				GsVec u = m.V[f1.b] - m.V[f1.a];
-				GsVec v = m.V[f1.c] - m.V[f1.a];
-
-				m.N.push() = calculateSurfaceNormal(u, v);
-
-				u = m.V[f2.b] - m.V[f2.a];
-				v = m.V[f2.c] - m.V[f2.a];
-
-				m.N.push() = calculateSurfaceNormal(u, v);
-
-				m.set_mode(GsModel::Flat, GsModel::NoMtl);
-			}
 			a += 6;
 			b += 6;
 			c += 6;
 			prevTheta = nextTheta;
 
-			
+
 		}
 
 		prevPhi = nextPhi;
@@ -224,20 +179,22 @@ void MyViewer::build_scene()
 
 
 	GsModel::Group &g = *m.G.push();
-	g.fi = 0; 
+	g.fi = 0;
 	g.fn = m.F.size();
 	g.dmap = new GsModel::Texture;
-	g.dmap->fname.set("..\\textures\\water.jpg");
-	
+	g.dmap->fname.set("..\\textures\\donut.png");
+
 	m.M.push().init();
-	//int nv = m.V.size();
-	/*m.T.size(nv);
+	int nv = m.V.size();
+	m.T.size(nv);
 	for (int i = 0; i < nv; ++i) {
 		GsVec w = m.V[i];
-		float v = acosf(w.y / R) / (2.0f * PI);
-		float u = acosf((w.x/ (R + r * cosf(2.0f * PI * v)))) * 2.0f * PI;
+		/*float u = (PI + atan2f(w.y, w.x)) / (2.0f * PI);
+		float v = (PI - acosf(w.z / sqrtf(powf(w.x, 2.0f)))) / PI;*/
+		float u = (PI + atan2f(w.y, w.x)) / (2.0f * PI);
+		float v = (1.0f + w.z) / 2.0f;
 		m.T[i] = GsVec2(u, v);
-	}*/
+	}
 	//Texturing is enabled
 	m.set_mode(GsModel::Smooth, GsModel::PerGroupMtl);
 	m.textured = true;
