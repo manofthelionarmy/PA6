@@ -8,13 +8,15 @@
 # include <sig/sn_manipulator.h>
 
 # include <sigogl/ws_run.h>
+# include <vector>
 float PI = 3.14f;
 static bool _smooth = true;
 static GsModel * torus;
 static int numFaces = 12;
 static float r = 0.1f;
 static float R = 0.5f;
-
+std::vector<GsString> filenames;
+std::vector<GsString>::iterator it;
 GsVec torusFunction(int phi, int theta, const float r1, const float R1) {
 	float x = 0.0f;
 	float y = 0.0f;
@@ -58,10 +60,21 @@ GsVec calculateSurfaceNormal(GsVec u, GsVec v) {
 MyViewer::MyViewer(int x, int y, int w, int h, const char* l) : WsViewer(x, y, w, h, l)
 {
 
+
+	filenames.push_back("..\\textures\\donut.png");
+	filenames.push_back("..\\textures\\carpet.png");
+	filenames.push_back("..\\textures\\grass.jpg");
+	filenames.push_back("..\\textures\\metal.jpg");
+	filenames.push_back("..\\textures\\Pokeball.png");
+	filenames.push_back("..\\textures\\water.jpg");
+
+	it = filenames.begin();
+
 	_nbut = 0;
 	_animating = false;
 	build_ui();
 	build_scene();
+
 }
 
 void MyViewer::build_ui()
@@ -115,7 +128,7 @@ void MyViewer::build_scene()
 	int b = 1;
 	int c = 2;
 
-	for (nextPhi = numFaces; prevPhi <= 360; nextPhi += numFaces) {
+	for (nextPhi = numFaces; nextPhi <= 360; nextPhi += numFaces) {
 		for (nextTheta = numFaces; nextTheta <= 360; nextTheta += numFaces) {
 
 
@@ -173,7 +186,7 @@ void MyViewer::build_scene()
 
 
 		}
-
+		prevTheta = 0; 
 		prevPhi = nextPhi;
 	}
 
@@ -182,7 +195,8 @@ void MyViewer::build_scene()
 	g.fi = 0;
 	g.fn = m.F.size();
 	g.dmap = new GsModel::Texture;
-	g.dmap->fname.set("..\\textures\\donut.png");
+	GsString filename = *it; 
+	g.dmap->fname.set(filename);
 
 	m.M.push().init();
 	int nv = m.V.size();
@@ -191,7 +205,7 @@ void MyViewer::build_scene()
 		GsVec w = m.V[i];
 		/*float u = (PI + atan2f(w.y, w.x)) / (2.0f * PI);
 		float v = (PI - acosf(w.z / sqrtf(powf(w.x, 2.0f)))) / PI;*/
-		float u = (PI + atan2f(w.y, w.x)) / (2.0f * PI);
+		float u = (PI + atan2f(w.y, w.x)) / (4.0f * PI);
 		float v = (1.0f + w.z) / 2.0f;
 		m.T[i] = GsVec2(u, v);
 	}
@@ -352,19 +366,15 @@ int MyViewer::handle_keyboard(const GsEvent &e)
 		render();
 		return 1;
 	}
-	case 'c': {
-
-		compute_segments(_smooth);
-		build_scene();
-		render();
-		return 1;
-	}
-	case 'v': {
-
+	case GsEvent::KeySpace: {
+		++it;
+		if (it == filenames.end()) {
+			it = filenames.begin();
+		}
 		rootg()->remove_all();
 		build_scene();
 		render();
-		return 1;
+		return 1; 
 	}
 	case GsEvent::KeyEsc: gs_exit(); return 1;
 	case 'n': { bool b = !_nbut->value(); _nbut->value(b); show_normals(b); return 1; }
